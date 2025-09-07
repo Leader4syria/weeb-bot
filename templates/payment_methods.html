@@ -6,7 +6,7 @@
 {% block content %}
 <div class="card mb-6 animate-fadeIn">
     <h2 class="text-2xl font-bold mb-6 text-gray-800">إضافة طريقة دفع جديدة</h2>
-    <form action="{{ url_for('admin_add_payment_method') }}" method="POST" class="space-y-4">
+    <form action="{{ url_for('admin.admin_add_payment_method') }}" method="POST" class="space-y-4">
         <div>
             <label for="name" class="block text-gray-700 text-sm font-bold mb-2">اسم طريقة الدفع:</label>
             <input type="text" id="name" name="name" class="form-input" placeholder="مثال: USDT TRC20" required>
@@ -64,7 +64,7 @@
                     </td>
                     <td>{{ method.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td class="flex flex-wrap items-center space-x-2 rtl:space-x-reverse space-y-2 md:space-y-0">
-                        <form action="{{ url_for('admin_edit_payment_method', method_id=method.id) }}" method="POST" class="flex flex-wrap items-center space-x-2 rtl:space-x-reverse space-y-2 md:space-y-0">
+                        <form action="{{ url_for('admin.admin_edit_payment_method', method_id=method.id) }}" method="POST" class="flex flex-wrap items-center space-x-2 rtl:space-x-reverse space-y-2 md:space-y-0">
                             <input type="text" name="name" value="{{ method.name }}" class="form-input w-28 text-sm" required>
                             <textarea name="description" class="form-input h-16 w-32 text-sm" placeholder="الوصف">{{ method.description if method.description else '' }}</textarea>
                             <input type="text" name="contact_user" value="{{ method.contact_user if method.contact_user else '' }}" class="form-input w-28 text-sm" placeholder="يوزر التواصل">
@@ -75,7 +75,7 @@
                             </div>
                             <button type="submit" class="btn-secondary text-sm py-2 px-3">تعديل</button>
                         </form>
-                        <form action="{{ url_for('admin_delete_payment_method', method_id=method.id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف طريقة الدفع هذه؟');">
+                        <form action="{{ url_for('admin.admin_delete_payment_method', method_id=method.id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف طريقة الدفع هذه؟');">
                             <button type="submit" class="btn-danger text-sm py-2 px-3">حذف</button>
                         </form>
                     </td>

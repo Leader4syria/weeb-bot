@@ -173,6 +173,9 @@
                 <a href="{{ url_for('admin.admin_service_mappings') }}" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 hover:text-white {% if page_title == 'إدارة Service Mappings' %}bg-gray-700 text-white{% endif %}">
                     <i class="fas fa-link mr-2"></i> Service Mappings
                 </a>
+                <a href="{{ url_for('admin.admin_payment_methods') }}" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 hover:text-white {% if page_title == 'إدارة طرق الدفع' %}bg-gray-700 text-white{% endif %}">
+                    <i class="fas fa-credit-card mr-2"></i> طرق الدفع
+                </a>
                 <!-- إضافة روابط جديدة لإرسال الرسائل -->
                 <a href="{{ url_for('admin.admin_broadcast') }}" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 hover:text-white {% if page_title == 'بث الرسائل للمستخدمين' %}bg-gray-700 text-white{% endif %}">
                     <i class="fas fa-bullhorn mr-2"></i> بث الرسائل
