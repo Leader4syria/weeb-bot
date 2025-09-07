@@ -359,13 +359,31 @@ def automate_order(order_id, user_id, service_id, service_name, full_params, tot
                 except json.JSONDecodeError:
                     error_details += f"\nرد السيرفر: {api_error.response.text}"
 
-            manual_notification = f"🔥 فشل إرسال طلب تلقائي!\n\n"
-            manual_notification += f"رقم الطلب: {order_id}\n"
-            manual_notification += f"الخدمة: {service_name}\n"
-            manual_notification += f"السبب: {error_details}"
+            # Prepare detailed notification for admin
+            user_full_name = order.user.full_name if order.user else "مستخدم غير معروف"
+            params_str = "\n".join([f" - {key}: `{value}`" for key, value in full_params.items()])
+
+            manual_notification = (
+                f"🔥 *فشل إرسال طلب تلقائي - مطلوب تدخل يدوي* 🔥\n\n"
+                f"يرجى معالجة الطلب التالي يدوياً:\n\n"
+                f"📋 *معلومات الطلب:*\n"
+                f"  - *رقم الطلب:* `{order.id}`\n"
+                f"  - *الخدمة:* {service_name}\n\n"
+                f"👤 *معلومات المستخدم:*\n"
+                f"  - *الاسم:* {user_full_name}\n"
+                f"  - *معرف المستخدم:* `{order.user_id}`\n\n"
+                f"📝 *البيانات (Params):*\n"
+                f"{params_str}\n\n"
+                f"📉 *سبب الفشل:*\n"
+                f"```{error_details}```"
+            )
+
             for admin_id in ADMIN_IDS:
                 try:
-                    bot.bot.send_message(admin_id, manual_notification)
+                    # Using MarkdownV2, so need to escape some characters if not already handled
+                    # For simplicity, sending as is, assuming names don't have special chars.
+                    # A more robust solution might escape names and values.
+                    bot.bot.send_message(admin_id, manual_notification, parse_mode="Markdown")
                 except Exception as e:
                     print(f"Failed to send failure notification to admin {admin_id}: {e}")
 

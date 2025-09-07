@@ -238,10 +238,61 @@
             overflow-x: auto;
             max-height: 40vh;
         }
+
+        #notification-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1050;
+            width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            background-color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transform: translateX(100%);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast-icon {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+
+        .toast.error {
+            border-left: 4px solid #EF4444; /* red-500 */
+        }
+
+        .toast.error .toast-icon {
+            color: #EF4444;
+        }
+
+        .toast.success {
+            border-left: 4px solid #10B981; /* green-500 */
+        }
+
+        .toast.success .toast-icon {
+            color: #10B981;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
+    <div id="notification-container"></div>
     <div id="loader"></div>
 
     <div id="app-content" class="min-h-screen flex flex-col bg-white shadow-lg rounded-2xl hidden">
@@ -360,18 +411,6 @@
         </div>
     </div>
 
-    <div id="error-modal" class="modal hidden">
-        <div class="modal-content">
-            <button id="close-modal-btn" class="modal-close-btn">&times;</button>
-            <h3 class="text-xl font-bold text-dark-green">سجل الأخطاء</h3>
-            <p class="text-sm text-gray-500 mt-1">يُرجى نسخ السجل وإرساله إلى الدعم الفني للمساعدة.</p>
-            <textarea id="error-log-area" class="modal-log-area w-full mt-4" readonly></textarea>
-            <div class="flex justify-center">
-                <button id="copy-log-btn" class="modal-copy-btn">نسخ السجل</button>
-            </div>
-        </div>
-    </div>
-
     <script>
     const SUPABASE_URL = 'https://vgknohxqkkuxhtnqxzfb.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZna25vaHhxa2t1eGh0bnF4emZiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA2ODgxMSwiZXhwIjoyMDcyNjQ0ODExfQ.nVhvJtXR3_g611P0wkHwbHDeUyIWHjA5aiba9u5aQ9Q';
@@ -401,19 +440,43 @@
     
     const logs = [];
 
+    function showNotification(message, type = 'error') {
+        const container = document.getElementById('notification-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+
+        const iconSvg = type === 'error'
+            ? `<svg class="toast-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`
+            : `<svg class="toast-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+
+        toast.innerHTML = `
+            ${iconSvg}
+            <span class="font-semibold">${message}</span>
+        `;
+
+        container.appendChild(toast);
+
+        // Animate in
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 100);
+
+        // Automatically remove after 5 seconds
+        setTimeout(() => {
+            toast.classList.remove('show');
+            toast.addEventListener('transitionend', () => toast.remove());
+        }, 5000);
+    }
+
     function logError(message, error, showModal = true) {
         const timestamp = new Date().toISOString();
         const logEntry = { timestamp, message, error: error?.message || 'N/A' };
         logs.push(logEntry);
         console.error(message, error);
-        const logArea = document.getElementById('error-log-area');
-        if (logArea) {
-             logArea.value = logs.map(l => 
-                `[${l.timestamp}] ${l.message} - Error: ${l.error}`
-            ).join('\n');
-        }
         if (showModal) {
-             showErrorModal(message);
+            showNotification(message, 'error');
         }
     }
 
@@ -459,10 +522,6 @@
     const breadcrumbServicesContainer = document.getElementById('breadcrumb-services');
     const breadcrumbDetailsContainer = document.getElementById('breadcrumb-details');
     
-    const errorModal = document.getElementById('error-modal');
-    const closeModalBtn = document.getElementById('close-modal-btn');
-    const copyLogBtn = document.getElementById('copy-log-btn');
-
     let currentParentId = null;
     let currentService = null;
 
@@ -1070,7 +1129,7 @@
                 const newBalance = parseFloat(result.new_balance);
                 gData.user.balance = newBalance.toFixed(2);
                 renderUserInfo();
-                showSuccessModal('تم تأكيد طلبك بنجاح! سيتم معالجة طلبك قريباً.');
+                showSuccessNotification('تم تأكيد طلبك بنجاح! سيتم معالجة طلبك قريباً.');
                 renderServices(currentService.category_id);
             } else {
                 logError(result.error || 'Failed to create order.', new Error(result.error || 'Failed to create order.'));
@@ -1080,41 +1139,9 @@
         }
     }
 
-    function showSuccessModal(message) {
-        const modal = document.createElement('div');
-        modal.className = 'modal';
-        modal.innerHTML = `
-            <div class="modal-content text-center">
-                <h3 class="text-xl font-bold text-dark-green mb-4">نجاح!</h3>
-                <p>${message}</p>
-                <button onclick="this.closest('.modal').remove()" class="modal-copy-btn mt-4">حسناً</button>
-            </div>
-        `;
-        document.body.appendChild(modal);
+    function showSuccessNotification(message) {
+        showNotification(message, 'success');
     }
-
-    function showErrorModal(message) {
-        document.getElementById('error-log-area').value = logs.map(l => 
-            `[${l.timestamp}] ${l.message} - Error: ${l.error}`
-        ).join('\n');
-        const modalMessageEl = errorModal.querySelector('p');
-        modalMessageEl.textContent = message;
-        errorModal.classList.remove('hidden');
-    }
-
-    closeModalBtn.addEventListener('click', () => {
-        errorModal.classList.add('hidden');
-    });
-
-    copyLogBtn.addEventListener('click', () => {
-        const logArea = document.getElementById('error-log-area');
-        logArea.select();
-        document.execCommand('copy');
-        copyLogBtn.textContent = 'تم النسخ!';
-        setTimeout(() => {
-            copyLogBtn.textContent = 'نسخ السجل';
-        }, 2000);
-    });
 
     mainCategoriesContainer.addEventListener('click', (e) => {
         const categoryCard = e.target.closest('.category-card');

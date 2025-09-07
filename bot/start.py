@@ -6,35 +6,36 @@ from utils import get_or_create_user
 from utils import send_message_to_user
 from config import START_MESSAGE, ADMIN_IDS, SUPPORT_CHANNEL_LINK
 import config
+from .keyboards import create_main_menu_inline_keyboard
 
-def create_main_menu_inline_keyboard():
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton("خدمات زيادة تفاعل سوشيال ميديا 🛍️", callback_data="show_services_menu")
-    )
-    if config.WEBAPP_URL:
-        web_app_url = f"{config.WEBAPP_URL}/web/services.html"
-        markup.add(
-            types.InlineKeyboardButton("الخدمات 🌐", web_app=types.WebAppInfo(url=web_app_url))
-        )
-    markup.add(
-        types.InlineKeyboardButton("شحن الرصيد 💸", callback_data="show_recharge_options"),
-        types.InlineKeyboardButton("معلوماتي 🪪 ", callback_data="show_my_balance")
-    )
-    markup.add(
-        types.InlineKeyboardButton("طلباتي 📋", callback_data="show_my_orders"),
-        types.InlineKeyboardButton("ربح اموال مجانا 👥", callback_data="show_referral_system"),
-    )
-    markup.add(
-        types.InlineKeyboardButton("تواصل معنا 📞", url=config.SUPPORT_CHANNEL_LINK)
-    )
-    return markup
+from config import MANDATORY_CHANNEL_ID
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     try:
         chat_id = message.chat.id
         telegram_id = message.from_user.id
+
+        try:
+            member = bot.get_chat_member(MANDATORY_CHANNEL_ID, telegram_id)
+            if member.status not in ['creator', 'administrator', 'member']:
+                markup = types.InlineKeyboardMarkup()
+                markup.add(types.InlineKeyboardButton("اشتراك في القناة", url=f"https://t.me/{MANDATORY_CHANNEL_ID.lstrip('@')}"))
+                markup.add(types.InlineKeyboardButton("✅ تحقق من الاشتراك", callback_data="check_subscription"))
+                bot.send_message(chat_id, "لاستخدام البوت، يرجى الاشتراك في قناتنا أولاً.", reply_markup=markup)
+                return
+        except Exception as e:
+            if 'user not found' in str(e).lower():
+                markup = types.InlineKeyboardMarkup()
+                markup.add(types.InlineKeyboardButton("اشتراك في القناة", url=f"https://t.me/{MANDATORY_CHANNEL_ID.lstrip('@')}"))
+                markup.add(types.InlineKeyboardButton("✅ تحقق من الاشتراك", callback_data="check_subscription"))
+                bot.send_message(chat_id, "لم أتمكن من التحقق من اشتراكك. يرجى الاشتراك في القناة ثم الضغط على زر التحقق.", reply_markup=markup)
+                return
+            else:
+                print(f"Error checking subscription for {telegram_id} in {MANDATORY_CHANNEL_ID}: {e}")
+                bot.send_message(chat_id, "حدث خطأ أثناء التحقق من اشتراكك. يرجى المحاولة مرة أخرى.")
+                return
+
         username = message.from_user.username
         full_name = message.from_user.full_name
 

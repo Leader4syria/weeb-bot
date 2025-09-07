@@ -3,26 +3,48 @@ from telebot import types
 from . import bot, user_states
 from database import Session, User
 from utils import edit_message_text_and_markup, get_or_create_user, delete_message
-from config import START_MESSAGE, SUPPORT_CHANNEL_LINK
+from config import START_MESSAGE, SUPPORT_CHANNEL_LINK, MANDATORY_CHANNEL_ID
 import config
+from .keyboards import create_main_menu_inline_keyboard
 
-def create_main_menu_inline_keyboard():
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton("الخدمات 🛍️", callback_data="show_services_menu")
-    )
-    markup.add(
-        types.InlineKeyboardButton("شحن الرصيد 💸", callback_data="show_recharge_options"),
-        types.InlineKeyboardButton("معلوماتي 🪪 ", callback_data="show_my_balance")
-    )
-    markup.add(
-        types.InlineKeyboardButton("طلباتي 📋", callback_data="show_my_orders"),
-        types.InlineKeyboardButton("ربح اموال مجانا 👥", callback_data="show_referral_system"),
-    )
-    markup.add(
-        types.InlineKeyboardButton("تواصل معنا 📞", url=config.SUPPORT_CHANNEL_LINK)
-    )
-    return markup
+@bot.callback_query_handler(func=lambda call: call.data == "check_subscription")
+def callback_check_subscription(call):
+    try:
+        chat_id = call.message.chat.id
+        telegram_id = call.from_user.id
+
+        member = bot.get_chat_member(MANDATORY_CHANNEL_ID, telegram_id)
+
+        if member.status in ['creator', 'administrator', 'member']:
+            bot.delete_message(chat_id, call.message.message_id)
+
+            s = Session()
+            user = s.query(User).filter_by(telegram_id=telegram_id).first()
+            if not user:
+                # This can happen if the user clicks the button before /start is fully processed
+                # or if there's a DB issue. We can try to get/create the user again.
+                user, _ = get_or_create_user(telegram_id, call.from_user.username, call.from_user.full_name, session=s)
+
+            welcome_message_text = (
+                f"{START_MESSAGE}\n\n"
+                f"<blockquote><b>معرفك:</b> <code>{user.telegram_id}</code></blockquote>\n"
+                f"<blockquote><b>رصيدك:</b> ${user.balance:.2f}</blockquote>\n"
+                f"<b>اختر من الأزرار :</b>"
+            )
+            sent_message = bot.send_message(chat_id, welcome_message_text,
+                                            reply_markup=create_main_menu_inline_keyboard(),
+                                            parse_mode="HTML")
+            user_states[chat_id] = {"main_menu_message_id": sent_message.message_id}
+            s.close()
+        else:
+            bot.answer_callback_query(call.id, "أنت لم تشترك في القناة بعد. يرجى الاشتراك ثم المحاولة مرة أخرى.", show_alert=True)
+
+    except Exception as e:
+        if 'user not found' in str(e).lower():
+            bot.answer_callback_query(call.id, "لم تشترك في القناة بعد. يرجى الاشتراك أولاً.", show_alert=True)
+        else:
+            print(f"Error in callback_check_subscription: {e}\n{traceback.format_exc()}")
+            bot.answer_callback_query(call.id, "حدث خطأ أثناء التحقق. يرجى المحاولة مرة أخرى.", show_alert=True)
 
 @bot.callback_query_handler(func=lambda call: call.data == "main_menu")
 def callback_main_menu(call):
