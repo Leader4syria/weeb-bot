@@ -532,8 +532,11 @@
             gData.initData = tg.initData;
             fetchInitialData(tg.initData);
         } catch (error) {
-            logError('Telegram WebApp is not available.', error);
-            fetchInitialData('local_test_data');
+            document.body.innerHTML = `
+                <div style="display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Noto Kufi Arabic', sans-serif; font-size: 3rem; color: #064E3B; background-color: #f3f4f6;">
+                    ماركت حلب
+                </div>
+            `;
         }
     });
 
@@ -770,7 +773,24 @@
 
                 let price = parseFloat(service.base_price || service.price);
                 let priceLabel = '';
-                if (service.min_quantity && service.min_quantity > 0) {
+
+                if (service.product_type === 'amount') {
+                    try {
+                        let qtyValues = service.qty_values;
+                        if (typeof qtyValues === 'string') {
+                            qtyValues = JSON.parse(qtyValues);
+                        }
+                        if (qtyValues && typeof qtyValues === 'object' && qtyValues.min) {
+                            const minQty = parseFloat(qtyValues.min);
+                            if (!isNaN(minQty)) {
+                                price = minQty * price;
+                                priceLabel = `<span class="text-xs text-gray-500">يبدأ من</span>`;
+                            }
+                        }
+                    } catch (e) {
+                        logError(`Could not parse qty_values for service ${service.id}`, e, false);
+                    }
+                } else if (service.min_quantity && service.min_quantity > 0) {
                     price = price * service.min_quantity;
                     priceLabel = `<span class="text-xs text-gray-500"> / ${service.min_quantity}</span>`;
                 }
@@ -789,7 +809,7 @@
                         </div>
                         <h3 class="text-lg font-bold text-dark-green">${service.name}</h3>
                         <p class="text-sm text-gray-500 my-2 flex-grow">${service.description || ''}</p>
-                        <div class="text-xl font-extrabold text-dark-green mt-auto">$${price.toFixed(2)}${priceLabel}</div>
+                        <div class="text-xl font-extrabold text-dark-green mt-auto">${priceLabel} $${price.toFixed(2)}</div>
                         <button class="mt-4 w-full py-2 bg-gray-400 text-white font-bold rounded-lg cursor-not-allowed" disabled>اطلب الآن</button>
                     `;
                 } else {
@@ -800,7 +820,7 @@
                         </div>
                         <h3 class="text-lg font-bold text-dark-green">${service.name}</h3>
                         <p class="text-sm text-gray-500 my-2 flex-grow">${service.description || ''}</p>
-                        <div class="text-xl font-extrabold text-dark-green mt-auto">$${price.toFixed(2)}${priceLabel}</div>
+                        <div class="text-xl font-extrabold text-dark-green mt-auto">${priceLabel} $${price.toFixed(2)}</div>
                         <button class="service-details-btn mt-4 w-full py-2 bg-dark-green text-white font-bold rounded-lg hover:bg-green-700 transition-colors duration-300" data-service-id="${service.id}">اطلب الآن</button>
                     `;
                 }
