@@ -582,11 +582,10 @@
     }
 
     function getSubCategoryImage(categoryId) {
-        const service = gData.services.find(s => s.category_id === categoryId && s.category_img);
-        if (service && service.category_img) {
-            return service.category_img;
-        }
         const category = gData.categories.find(c => c.id === categoryId);
+        if (category && category.img) {
+            return category.img;
+        }
         return `https://placehold.co/600x400/064e3b/ecfdf5?text=${encodeURIComponent(category?.name || 'تصنيف')}`;
     }
 
@@ -794,7 +793,16 @@
                     price = price * service.min_quantity;
                     priceLabel = `<span class="text-xs text-gray-500"> / ${service.min_quantity}</span>`;
                 }
-                const serviceImage = service.category_img || `https://placehold.co/600x400/ecfdf5/064e3b?text=${encodeURIComponent(service.name)}`;
+                let serviceImage = service.img;
+                if (!serviceImage) {
+                    const parentCategory = gData.categories.find(c => c.id === service.category_id);
+                    if (parentCategory && parentCategory.img) {
+                        serviceImage = parentCategory.img;
+                    }
+                }
+                if (!serviceImage) {
+                    serviceImage = `https://placehold.co/600x400/ecfdf5/064e3b?text=${encodeURIComponent(service.name)}`;
+                }
 
                 if (service.available === false) {
                     classes += ' relative'; // Needed for overlay positioning
@@ -852,7 +860,16 @@
             currentService = service;
             
             const basePrice = parseFloat(service.base_price || service.price);
-            const serviceImage = service.category_img || `https://placehold.co/600x400/ecfdf5/064e3b?text=${encodeURIComponent(service.name)}`;
+            let serviceImage = service.img;
+            if (!serviceImage) {
+                const parentCategory = gData.categories.find(c => c.id === service.category_id);
+                if (parentCategory && parentCategory.img) {
+                    serviceImage = parentCategory.img;
+                }
+            }
+            if (!serviceImage) {
+                serviceImage = `https://placehold.co/600x400/ecfdf5/064e3b?text=${encodeURIComponent(service.name)}`;
+            }
             
             generateBreadcrumb(service.category_id, breadcrumbDetailsContainer);
             

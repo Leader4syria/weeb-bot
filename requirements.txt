@@ -1,0 +1,8 @@
+Flask
+pyTelegramBotAPI
+pyngrok
+SQLAlchemy
+requests
+aiohttp
+supabase-py
+APScheduler

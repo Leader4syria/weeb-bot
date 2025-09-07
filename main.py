@@ -19,6 +19,9 @@ import traceback
 from urllib.parse import parse_qsl
 import requests
 import uuid
+import asyncio
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from sync_supabase import main as sync_supabase_main
 
 app = Flask(__name__, static_folder='web')
 app.config['SECRET_KEY'] = FLASK_SECRET_KEY
@@ -482,6 +485,49 @@ def order_status_checker():
         # Wait for 5 minutes before the next check
         time.sleep(300)
 
+
+async def run_sync_and_notify():
+    """Runs the main sync function and notifies admins upon completion."""
+    print("🚀 Starting Supabase sync...")
+    try:
+        await sync_supabase_main()
+        print("✅ Supabase sync completed successfully.")
+        success_message = "✅ تم تحديث بيانات الخدمات والتصنيفات من المصدر بنجاح."
+        for admin_id in ADMIN_IDS:
+            try:
+                backup_bot.send_message(admin_id, success_message)
+            except Exception as e:
+                print(f"Failed to send sync success notification to admin {admin_id}: {e}")
+    except Exception as e:
+        print(f"❌ An error occurred during the scheduled Supabase sync: {e}")
+        traceback.print_exc()
+
+def supabase_sync_scheduler():
+    """
+    Sets up and runs the scheduler for the Supabase sync.
+    Runs once immediately, then schedules for every 12 hours.
+    """
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    # Run the sync immediately
+    loop.run_until_complete(run_sync_and_notify())
+
+    # Schedule the job to run every 12 hours
+    scheduler = AsyncIOScheduler(event_loop=loop)
+    scheduler.add_job(run_sync_and_notify, 'interval', hours=12)
+    scheduler.start()
+    print("⏰ Supabase sync scheduler started. Will run every 12 hours.")
+
+    try:
+        loop.run_forever()
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    finally:
+        scheduler.shutdown()
+        loop.close()
+
+
 if __name__ == "__main__":
     init_db()
 
@@ -514,6 +560,10 @@ if __name__ == "__main__":
     status_checker_thread = threading.Thread(target=order_status_checker)
     status_checker_thread.daemon = True
     status_checker_thread.start()
+
+    supabase_sync_thread = threading.Thread(target=supabase_sync_scheduler)
+    supabase_sync_thread.daemon = True
+    supabase_sync_thread.start()
 
     server_url = f"http://YOUR_SERVER_IP:{FLASK_PORT}"
     print("✅ تم تشغيل المشروع بنجاح!")
